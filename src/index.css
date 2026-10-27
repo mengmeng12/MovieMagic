@@ -1,0 +1,62 @@
+:root {
+  --bg: #111318;
+  --panel: #1c1f26;
+  --text: #e8e8ea;
+  --muted: #9a9ca5;
+  --accent: #f5c518;
+  --error: #ff6b6b;
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+a { color: var(--accent); text-decoration: none; }
+main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+h1, h2 { margin: 24px 0 12px; }
+
+button, input, select, textarea {
+  font: inherit; color: var(--text); background: var(--panel);
+  border: 1px solid #333844; border-radius: 6px; padding: 8px 12px;
+}
+button { cursor: pointer; }
+button:disabled { opacity: 0.6; }
+button.link { border: none; background: none; color: var(--accent); padding: 0; }
+
+.navbar {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 12px 16px; background: var(--panel);
+}
+.navbar a { color: var(--text); }
+.navbar a.active { color: var(--accent); }
+.navbar .brand { font-weight: 700; color: var(--accent); font-size: 1.2em; }
+.spacer { flex: 1; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+.row { display: grid; grid-auto-flow: column; grid-auto-columns: 150px; gap: 16px; overflow-x: auto; padding-bottom: 8px; }
+.card { color: var(--text); }
+.card img, .no-poster { width: 100%; aspect-ratio: 2 / 3; border-radius: 8px; object-fit: cover; background: var(--panel); }
+.no-poster { display: grid; place-items: center; color: var(--muted); }
+.card-title { margin-top: 6px; font-weight: 600; }
+.note { color: var(--accent); margin-top: 4px; }
+
+.search-form { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+.search-form input[name="q"] { flex: 1; min-width: 180px; }
+
+.detail { display: flex; gap: 24px; flex-wrap: wrap; }
+.detail img { width: 300px; max-width: 100%; border-radius: 8px; }
+.detail > div { flex: 1; min-width: 260px; }
+.trailer { width: 100%; max-width: 800px; aspect-ratio: 16 / 9; border: 0; }
+
+.review-form { display: flex; flex-direction: column; gap: 8px; max-width: 600px; }
+.review-form textarea { min-height: 80px; }
+.review-form button { margin-right: 8px; }
+.review { border-top: 1px solid #2a2e38; padding: 12px 0; }
+
+.login { max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
+.login form { display: flex; flex-direction: column; gap: 8px; }
+
+.muted { color: var(--muted); }
+.small { font-size: 0.85em; }
+.error { color: var(--error); }
+footer { text-align: center; padding: 24px 16px; }
