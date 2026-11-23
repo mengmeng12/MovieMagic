@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { listFavorites } from '../lib/favorites';
+import { listUserMovies } from '../lib/favorites';
+import { listUserReviews } from '../lib/reviews';
 import { getRecommendations } from '../lib/recommend';
 import { getMovieRecommendations, getTrending } from '../lib/tmdb';
 import { useAsync } from '../lib/useAsync';
@@ -8,10 +9,17 @@ import MovieCard from '../components/MovieCard';
 import Status from '../components/Status';
 
 async function loadRecommendations(user) {
-  const favorites = user ? await listFavorites(user.uid) : [];
-  const recs = await getRecommendations(favorites, getMovieRecommendations);
+  const profile = user ? await Promise.all([
+    listUserMovies(user.uid, 'favorites'),
+    listUserMovies(user.uid, 'watchlist'),
+    listUserMovies(user.uid, 'watched'),
+    listUserReviews(user.uid),
+  ]).then(([favorites, watchlist, watched, reviews]) => ({
+    favorites, watchlist, watched, reviews,
+  })) : {};
+  const recs = await getRecommendations(profile, getMovieRecommendations);
   if (recs.length) return { recs, fallback: false };
-  // Fall back to trending when there are no favorites or no recommendations
+  // Fall back to trending when there are no positive matches.
   const trending = await getTrending();
   return { recs: trending.map((movie) => ({ movie, because: [] })), fallback: true };
 }
@@ -26,7 +34,9 @@ export default function ForYou() {
       <Status state={state} />
       {state.data?.fallback && (
         <p className="muted">
-          {user ? 'Add a few movies to your favorites' : <><Link to="/login">Sign in</Link> and add a few movies to your favorites</>} to get personalized picks. Meanwhile, here's what's trending:
+          {user
+            ? 'Favorite movies, add movies to your Want to Watch list, or rate movies'
+            : <><Link to="/login">Sign in</Link> to favorite movies, add movies to your Want to Watch list, or rate them</>} to get personalized picks. Watched movies are excluded from recommendations. Meanwhile, here’s what’s trending:
         </p>
       )}
       {state.data && (
@@ -35,7 +45,7 @@ export default function ForYou() {
             <MovieCard
               key={movie.id}
               movie={movie}
-              note={because.length ? `Because you liked ${because.join(', ')}` : null}
+              note={because.length ? `Based on your ${because.join(' and ')}` : null}
             />
           ))}
         </div>

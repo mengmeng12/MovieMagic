@@ -3,25 +3,31 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 
-const favoritesCol = (uid) => collection(db, 'users', uid, 'favorites');
+const userMoviesCol = (uid, list) => collection(db, 'users', uid, list);
 
-// Most recent first: [{ movieId, title, posterPath, addedAt }]
-export async function listFavorites(uid) {
-  const snap = await getDocs(query(favoritesCol(uid), orderBy('addedAt', 'desc')));
+export async function listUserMovies(uid, list) {
+  const snap = await getDocs(query(userMoviesCol(uid, list), orderBy('addedAt', 'desc')));
   return snap.docs.map((d) => d.data());
 }
 
-export async function isFavorite(uid, movieId) {
-  const snap = await getDoc(doc(favoritesCol(uid), String(movieId)));
+export async function isMovieInList(uid, list, movieId) {
+  const snap = await getDoc(doc(userMoviesCol(uid, list), String(movieId)));
   return snap.exists();
 }
 
-export const addFavorite = (uid, movie) =>
-  setDoc(doc(favoritesCol(uid), String(movie.id)), {
+export const addMovieToList = (uid, list, movie) =>
+  setDoc(doc(userMoviesCol(uid, list), String(movie.id)), {
     movieId: movie.id,
     title: movie.title,
     posterPath: movie.poster_path ?? null,
     addedAt: serverTimestamp(),
   });
 
-export const removeFavorite = (uid, movieId) => deleteDoc(doc(favoritesCol(uid), String(movieId)));
+export const removeMovieFromList = (uid, list, movieId) =>
+  deleteDoc(doc(userMoviesCol(uid, list), String(movieId)));
+
+// Most recent first: [{ movieId, title, posterPath, addedAt }]
+export const listFavorites = (uid) => listUserMovies(uid, 'favorites');
+export const isFavorite = (uid, movieId) => isMovieInList(uid, 'favorites', movieId);
+export const addFavorite = (uid, movie) => addMovieToList(uid, 'favorites', movie);
+export const removeFavorite = (uid, movieId) => removeMovieFromList(uid, 'favorites', movieId);

@@ -1,8 +1,9 @@
 import { useParams } from 'react-router-dom';
 import { getMovie, posterUrl } from '../lib/tmdb';
 import { useAsync } from '../lib/useAsync';
-import FavoriteButton from '../components/FavoriteButton';
+import MovieActions from '../components/MovieActions';
 import Reviews from '../components/Reviews';
+import TmdbReviews from '../components/TmdbReviews';
 import Status from '../components/Status';
 
 export default function MovieDetail() {
@@ -29,7 +30,7 @@ export default function MovieDetail() {
           <p className="muted">{movie.genres.map((g) => g.name).join(' / ')}</p>
           {director && <p>Director: {director.name}</p>}
           <p>{movie.overview || 'No overview available.'}</p>
-          <FavoriteButton movie={movie} />
+          <MovieActions movie={movie} />
         </div>
       </div>
 
@@ -48,11 +49,22 @@ export default function MovieDetail() {
       {cast.length > 0 && (
         <section>
           <h2>Cast</h2>
-          <p>{cast.map((c) => `${c.name} (${c.character})`).join(', ')}</p>
+          <ul className="cast-list">
+            {cast.map((c) => (
+              <li key={`${c.id}-${c.character}`}>
+                {c.name} <span className="muted">({c.character})</span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
-      <Reviews movieId={movie.id} />
+      <section className="reviews-panel">
+        <h2>Reviews</h2>
+        <Reviews movieId={movie.id}>
+          <TmdbReviews key={movie.id} movieId={movie.id} />
+        </Reviews>
+      </section>
     </>
   );
 }

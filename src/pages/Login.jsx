@@ -10,7 +10,13 @@ export default function Login() {
   const [signUp, setSignUp] = useState(false);
   const [error, setError] = useState('');
 
-  if (!firebaseEnabled) return <p className="muted">Configure Firebase in .env.local first.</p>;
+  if (!firebaseEnabled) {
+    return (
+      <div className="login-page">
+        <p className="muted">Configure Firebase in .env.local first.</p>
+      </div>
+    );
+  }
 
   async function run(action) {
     setError('');
@@ -33,22 +39,24 @@ export default function Login() {
   }
 
   return (
-    <div className="login">
-      <h1>{signUp ? 'Sign up' : 'Sign in'}</h1>
-      <form onSubmit={onSubmit}>
-        <input name="email" type="email" placeholder="Email" required />
-        <input name="password" type="password" placeholder="Password (at least 6 characters)" minLength={6} required />
-        <button type="submit">{signUp ? 'Sign up' : 'Sign in'}</button>
-      </form>
-      <button onClick={() => run(() => signInWithPopup(auth, new GoogleAuthProvider()))}>
-        Continue with Google
-      </button>
-      <p>
-        <button className="link" onClick={() => setSignUp(!signUp)}>
-          {signUp ? 'Already have an account? Sign in' : 'No account? Sign up'}
+    <div className="login-page">
+      <div className="login">
+        <h1>{signUp ? 'Sign up' : 'Sign in'}</h1>
+        <form onSubmit={onSubmit}>
+          <input name="email" type="email" placeholder="Email" required />
+          <input name="password" type="password" placeholder="Password (at least 6 characters)" minLength={6} required />
+          <button type="submit">{signUp ? 'Sign up' : 'Sign in'}</button>
+        </form>
+        <button onClick={() => run(() => signInWithPopup(auth, new GoogleAuthProvider()))}>
+          Continue with Google
         </button>
-      </p>
-      {error && <p className="error">{error}</p>}
+        <p>
+          <button className="link" onClick={() => setSignUp(!signUp)}>
+            {signUp ? 'Already have an account? Sign in' : 'No account? Sign up'}
+          </button>
+        </p>
+        {error && <p className="error">{error}</p>}
+      </div>
     </div>
   );
 }

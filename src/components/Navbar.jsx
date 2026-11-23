@@ -11,6 +11,8 @@ export default function Navbar() {
       <NavLink to="/search">Search</NavLink>
       {firebaseEnabled && <NavLink to="/for-you">For You</NavLink>}
       {firebaseEnabled && <NavLink to="/favorites">Favorites</NavLink>}
+      {firebaseEnabled && <NavLink to="/watched">Watched</NavLink>}
+      {firebaseEnabled && <NavLink to="/watchlist">Want to Watch</NavLink>}
       <span className="spacer" />
       {firebaseEnabled && (user ? (
         <>

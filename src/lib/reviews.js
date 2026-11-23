@@ -13,6 +13,11 @@ export async function listReviews(movieId) {
     .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
 }
 
+export async function listUserReviews(uid) {
+  const snap = await getDocs(query(collection(db, 'reviews'), where('uid', '==', uid)));
+  return snap.docs.map((d) => d.data());
+}
+
 export const saveReview = (user, movieId, { rating, text }) =>
   setDoc(doc(db, 'reviews', reviewId(movieId, user.uid)), {
     movieId,

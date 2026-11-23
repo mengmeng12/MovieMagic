@@ -6,6 +6,7 @@ import Search from './pages/Search';
 import MovieDetail from './pages/MovieDetail';
 import Login from './pages/Login';
 import Favorites from './pages/Favorites';
+import UserMovieList from './pages/UserMovieList';
 import ForYou from './pages/ForYou';
 
 export default function App() {
@@ -22,6 +23,8 @@ export default function App() {
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/favorites" element={<Favorites />} />
+          <Route path="/watched" element={<UserMovieList list="watched" title="Watched Movies" listDescription="your watched movies" />} />
+          <Route path="/watchlist" element={<UserMovieList list="watchlist" title="Want to Watch" listDescription="your watchlist" />} />
           <Route path="/for-you" element={<ForYou />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Routes>

@@ -5,8 +5,9 @@ import { deleteReview, listReviews, saveReview } from '../lib/reviews';
 import { useAsync } from '../lib/useAsync';
 import { useAuth } from '../context/AuthContext';
 import Status from './Status';
+import ExpandableReviewText from './ExpandableReviewText';
 
-export default function Reviews({ movieId }) {
+export default function Reviews({ movieId, children }) {
   const { user } = useAuth();
   const [version, setVersion] = useState(0);
   const [error, setError] = useState('');
@@ -14,8 +15,6 @@ export default function Reviews({ movieId }) {
     () => (firebaseEnabled ? listReviews(movieId) : Promise.resolve([])),
     [movieId, version],
   );
-
-  if (!firebaseEnabled) return <p className="muted">Configure Firebase to enable reviews.</p>;
 
   const mine = reviews.data?.find((r) => r.uid === user?.uid);
 
@@ -39,9 +38,8 @@ export default function Reviews({ movieId }) {
   }
 
   return (
-    <section>
-      <h2>Reviews</h2>
-      {user ? (
+    <div>
+      {firebaseEnabled ? (user ? (
         <form className="review-form" onSubmit={onSubmit} key={mine ? 'edit' : 'new'}>
           <label>
             Rating
@@ -60,15 +58,32 @@ export default function Reviews({ movieId }) {
         </form>
       ) : (
         <p><Link to="/login">Sign in</Link> to write a review.</p>
+      )) : (
+        <p className="muted">Configure Firebase to write and see community reviews.</p>
       )}
-      <Status state={reviews} />
-      {reviews.data?.length === 0 && <p className="muted">No reviews yet.</p>}
-      {reviews.data?.map((r) => (
-        <div key={r.uid} className="review">
-          <strong>{r.displayName}</strong> <span className="muted">★ {r.rating}/10</span>
-          <p>{r.text}</p>
-        </div>
-      ))}
-    </section>
+      {children}
+      {firebaseEnabled && (
+        <>
+          <Status state={reviews} />
+          {reviews.data?.map((r) => {
+            const createdAt = r.createdAt?.toDate?.();
+            return (
+              <div key={r.uid} className="review">
+                <div className="review-meta">
+                  <strong>{r.displayName}</strong>
+                  <span className="muted">★ {r.rating}/10</span>
+                  {createdAt && (
+                    <time className="muted small" dateTime={createdAt.toISOString()}>
+                      {createdAt.toLocaleDateString()}
+                    </time>
+                  )}
+                </div>
+                <ExpandableReviewText text={r.text ?? ''} />
+              </div>
+            );
+          })}
+        </>
+      )}
+    </div>
   );
 }

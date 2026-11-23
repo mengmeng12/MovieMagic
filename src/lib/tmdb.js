@@ -23,6 +23,8 @@ export const getGenres = () => get('/genre/movie/list').then((d) => d.genres);
 export const getMovie = (id) => get(`/movie/${id}`, { append_to_response: 'credits,videos' });
 export const getMovieRecommendations = (id) =>
   get(`/movie/${id}/recommendations`).then((d) => d.results);
+export const getMovieReviews = (id, page = 1) =>
+  get(`/movie/${id}/reviews`, { page, language: 'en-US' });
 
 // /search/movie can't filter by genre, so filter locally when there is a query
 export async function findMovies({ q, genre, year }) {

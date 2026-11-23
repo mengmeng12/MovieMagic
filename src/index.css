@@ -46,14 +46,34 @@ button.link { border: none; background: none; color: var(--accent); padding: 0; 
 .detail { display: flex; gap: 24px; flex-wrap: wrap; }
 .detail img { width: 300px; max-width: 100%; border-radius: 8px; }
 .detail > div { flex: 1; min-width: 260px; }
+.movie-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cast-list { list-style: none; margin: 0; padding: 0; }
+.cast-list li + li { margin-top: 8px; }
 .trailer { width: 100%; max-width: 800px; aspect-ratio: 16 / 9; border: 0; }
 
 .review-form { display: flex; flex-direction: column; gap: 8px; max-width: 600px; }
 .review-form textarea { min-height: 80px; }
 .review-form button { margin-right: 8px; }
-.review { border-top: 1px solid #2a2e38; padding: 12px 0; }
+.review { padding: 12px 0; }
+.tmdb-review { padding: 16px 0; }
+.tmdb-review-meta { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.review-meta { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.review-text { white-space: pre-wrap; line-height: 1.6; }
+.review-text-collapsed {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  white-space: normal;
+  overflow: hidden;
+}
+.review-text-toggle { display: block; margin: 8px 0; }
 
-.login { max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
+.login-page {
+  min-height: calc(100vh - 160px);
+  display: grid;
+  place-items: center;
+}
+.login { width: 100%; max-width: 360px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 .login form { display: flex; flex-direction: column; gap: 8px; }
 
 .muted { color: var(--muted); }
