@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { posterUrl } from '../lib/tmdb';
 
-export default function MovieCard({ movie, note }) {
+export default function MovieCard({ movie, note, listNote }) {
   const poster = posterUrl(movie.poster_path);
   const year = movie.release_date?.slice(0, 4);
   return (
@@ -13,6 +13,7 @@ export default function MovieCard({ movie, note }) {
         {movie.vote_average ? ` · ★ ${movie.vote_average.toFixed(1)}` : ''}
       </div>
       {note && <div className="note small">{note}</div>}
+      {listNote && <div className="muted small">{listNote}</div>}
     </Link>
   );
 }

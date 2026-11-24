@@ -38,7 +38,7 @@ button.link { border: none; background: none; color: var(--accent); padding: 0; 
 .card img, .no-poster { width: 100%; aspect-ratio: 2 / 3; border-radius: 8px; object-fit: cover; background: var(--panel); }
 .no-poster { display: grid; place-items: center; color: var(--muted); }
 .card-title { margin-top: 6px; font-weight: 600; }
-.note { color: var(--accent); margin-top: 4px; }
+.note { color: var(--accent); margin-top: 4px; line-height: 1.45; overflow-wrap: anywhere; }
 
 .search-form { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
 .search-form input[name="q"] { flex: 1; min-width: 180px; }
