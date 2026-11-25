@@ -129,3 +129,80 @@ describe('getRecommendations', () => {
     expect(await getRecommendations([], vi.fn())).toEqual([]);
   });
 });
+
+describe('exploration and surprise learning', () => {
+  const now = Date.UTC(2026, 10, 25);
+  const timestamp = (days = 0) => ({ seconds: (now - days * 86400000) / 1000 });
+  const qualityMovie = (id, rating = 8, votes = 500) => ({ ...movie(id, rating), vote_count: votes });
+  const familiar = Array.from({ length: 20 }, (_, i) => qualityMovie(100 + i));
+
+  it('reserves at most two slots, ranks exploration by rating then votes, and deduplicates', async () => {
+    const result = await getRecommendations({ favorites: [{ movieId: 1 }] }, async () => familiar, 20, now,
+      [qualityMovie(200, 8, 600), qualityMovie(201, 9), qualityMovie(202, 8, 800), qualityMovie(201, 9), qualityMovie(100, 10)]);
+    expect(result).toHaveLength(20);
+    expect(result.filter((entry) => entry.exploration).map((entry) => entry.movie.id)).toEqual([201, 202]);
+    expect(result[9]).toMatchObject({ movie: { id: 201 }, score: 0.05 });
+    expect(result[19]).toMatchObject({ movie: { id: 202 } });
+    expect(new Set(result.map((entry) => entry.movie.id)).size).toBe(20);
+    expect(result[0].score).toBe(3);
+  });
+
+  it('does not turn a sparse result into mostly exploration', async () => {
+    for (const size of [1, 9, 10, 19, 20]) {
+      const result = await getRecommendations({ favorites: [{ movieId: 1 }] }, async () => familiar.slice(0, size), 20, now,
+        Array.from({ length: 20 }, (_, i) => qualityMovie(200 + i)));
+      expect(result.filter((entry) => entry.exploration).length / result.length).toBeLessThanOrEqual(0.1);
+    }
+  });
+
+  it('does not explore saved, watched, reviewed, low-confidence, or negatively matched movies', async () => {
+    const result = await getRecommendations({
+      favorites: [{ movieId: 1 }], watchlist: [{ movieId: 2 }],
+      watched: [{ movieId: '3' }], reviews: [{ movieId: 4, rating: 1 }],
+    }, async (id) => id === 1 ? familiar : id === 4 ? [qualityMovie(5)] : [], 20, now,
+    [1, 2, 3, 4, 5].map((id) => qualityMovie(id, 10)).concat(qualityMovie(6, 10, 99), qualityMovie(7, 8)));
+    expect(result.filter((entry) => entry.exploration).map((entry) => entry.movie.id)).toEqual([7]);
+    expect(result.some((entry) => entry.movie.id === 5)).toBe(false);
+  });
+
+  it('ranks weak matches by quality and shares exploration slots with unrelated candidates', async () => {
+    const result = await getRecommendations({ watchlist: [{ movieId: 1 }, { movieId: 2, addedAt: timestamp(90) }] },
+      async (id) => id === 1 ? familiar : [qualityMovie(200, 9, 800), qualityMovie(201, 9, 1000)], 20, now,
+      [qualityMovie(300, 9, 900)]);
+    expect(result.filter((entry) => entry.exploration).map((entry) => entry.movie.id)).toEqual([201, 300]);
+    expect(result[0].movie.id).toBe(200);
+    expect(result[0].score).toBe(0.5);
+  });
+
+  it('adds only a small decaying surprise bonus to an accepted discovery', async () => {
+    for (const [days, decay] of [[0, 1], [90, 0.5], [900, 0.25]]) {
+      const [entry] = await getRecommendations({ watchlist: [{ movieId: 1, surprise: true, addedAt: timestamp(days) }] },
+        async () => [movie(100)], 20, now);
+      expect(entry.score).toBeCloseTo(1.1 * decay);
+      expect(entry.score - decay).toBeLessThan(decay);
+      expect(entry.reasons[0].type).toBe('watchlist');
+    }
+  });
+
+  it('does not stack duplicate surprise saves or override negative ratings', async () => {
+    const saved = { movieId: 1, surprise: true, addedAt: timestamp() };
+    const [entry] = await getRecommendations({ watchlist: [saved, saved], favorites: [{ movieId: 1 }] }, async () => [movie(100)], 20, now);
+    expect(entry.score).toBeCloseTo(3.1);
+    const negative = await getRecommendations({ watchlist: [saved], reviews: [{ movieId: 1, rating: 2 }] },
+      async () => [qualityMovie(100)], 20, now, [qualityMovie(100)]);
+    expect(negative).toEqual([]);
+    const [ordinary] = await getRecommendations({ favorites: [{ movieId: 1, surprise: true }] }, async () => [movie(100)], 20, now);
+    expect(ordinary.score).toBe(3);
+  });
+
+  it('lets one accepted discovery contribute within the six-positive-seed budget', async () => {
+    const fetchRecs = vi.fn(async () => []);
+    await getRecommendations({
+      favorites: Array.from({ length: 8 }, (_, i) => ({ movieId: i + 1 })),
+      watchlist: [{ movieId: 9, surprise: true, addedAt: timestamp(10) }, { movieId: 10, surprise: true, addedAt: timestamp() }],
+      reviews: [{ movieId: 11, rating: 1 }, { movieId: 12, rating: 2 }],
+    }, fetchRecs, 20, now);
+    expect(fetchRecs).toHaveBeenCalledTimes(8);
+    expect(fetchRecs.mock.calls.map(([id]) => id)).toEqual([1, 2, 3, 4, 5, 10, 11, 12]);
+  });
+});

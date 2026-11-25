@@ -15,12 +15,15 @@ export async function isMovieInList(uid, list, movieId) {
   return snap.exists();
 }
 
-export const addMovieToList = (uid, list, movie) =>
+export const addMovieToList = (uid, list, movie, recommendation) =>
   setDoc(doc(userMoviesCol(uid, list), String(movie.id)), {
     movieId: movie.id,
     title: movie.title,
     posterPath: movie.poster_path ?? null,
     addedAt: serverTimestamp(),
+    ...(list === 'watchlist' && recommendation?.exploration === true
+      && recommendation.userId === uid && String(recommendation.movieId) === String(movie.id)
+      ? { surprise: true } : {}),
   });
 
 export const removeMovieFromList = (uid, list, movieId) =>

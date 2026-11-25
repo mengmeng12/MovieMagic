@@ -5,6 +5,42 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const SAVE_HALF_LIFE_DAYS = 90;
 export const MIN_SAVE_WEIGHT = 0.25;
 const RECENT_DAYS = 30;
+export const SURPRISE_BONUS = 0.1;
+export const EXPLORATION_WEIGHT = 0.05;
+const MIN_EXPLORATION_VOTES = 100;
+
+const byQuality = (a, b) => (b.movie.vote_average ?? 0) - (a.movie.vote_average ?? 0)
+  || (b.movie.vote_count ?? 0) - (a.movie.vote_count ?? 0);
+
+function mixExploration(ranked, scores, movies, profile, limit) {
+  if (!ranked.length) return [];
+  const knownIds = new Set([...getExcludedMovieIds(profile), ...['favorites', 'watchlist']
+    .flatMap((list) => profile[list] ?? []).map((item) => String(item.movieId ?? item.id))]);
+  const candidates = new Map();
+  const eligible = (entry) => !knownIds.has(String(entry.movie.id))
+    && (entry.movie.vote_count ?? 0) >= MIN_EXPLORATION_VOTES
+    && (entry.movie.vote_average ?? 0) > 0 && !entry.negativeMatches;
+  for (const entry of ranked) {
+    if (entry.positiveMatches === 1 && entry.score <= 1 && eligible(entry)) {
+      candidates.set(String(entry.movie.id), entry);
+    }
+  }
+  for (const movie of movies) {
+    const key = String(movie.id);
+    if (movie.id == null || scores.has(key) || candidates.has(key)) continue;
+    const entry = { movie, score: EXPLORATION_WEIGHT, count: 0, because: new Set(), reasons: [] };
+    if (eligible(entry)) candidates.set(key, entry);
+  }
+  const slots = Math.floor(Math.min(limit, ranked.length) / 10);
+  const exploration = [...candidates.values()].sort(byQuality).slice(0, slots)
+    .map((entry) => ({ ...entry, exploration: true }));
+  const selectedIds = new Set(exploration.map((entry) => String(entry.movie.id)));
+  const result = ranked.filter((entry) => !selectedIds.has(String(entry.movie.id)))
+    .slice(0, limit - exploration.length);
+  // One discovery at positions 10 and 20, keeping strong matches at the top.
+  exploration.forEach((entry, index) => result.splice(Math.min((index + 1) * 10 - 1, result.length), 0, entry));
+  return result;
+}
 
 export function getExcludedMovieIds(profile = {}) {
   return new Set(['watched', 'reviews']
@@ -54,7 +90,7 @@ export function rankRecommendations(seeds, lists, favIds, limit = 20) {
 }
 
 // favorites must be most-recent first; fetchRecs(movieId) returns TMDb recommendations
-export async function getRecommendations(profileInput, fetchRecs, limit = 20, now = Date.now()) {
+export async function getRecommendations(profileInput, fetchRecs, limit = 20, now = Date.now(), explorationMovies = null) {
   const isLegacyInput = Array.isArray(profileInput);
   const profile = isLegacyInput ? { favorites: profileInput } : (profileInput ?? {});
   const listsByName = {
@@ -74,6 +110,7 @@ export async function getRecommendations(profileInput, fetchRecs, limit = 20, no
       title: item.title ?? item.movieTitle ?? '',
       favorite: false,
       watchlist: false,
+      surprise: false,
       favoriteAt: null,
       watchlistAt: null,
       rating: null,
@@ -97,6 +134,7 @@ export async function getRecommendations(profileInput, fetchRecs, limit = 20, no
     if (seed) {
       seed.watchlist = true;
       seed.watchlistAt = timestampMs(item.addedAt);
+      seed.surprise = item.surprise === true;
     }
   }
   for (const item of listsByName.reviews) {
@@ -119,6 +157,8 @@ export async function getRecommendations(profileInput, fetchRecs, limit = 20, no
       ].sort((a, b) => b.weight - a.weight || (b.at ?? 0) - (a.at ?? 0));
       const strongest = signals[0];
       weight = strongest.weight;
+      // A small reward for a discovery accepted into Want to Watch; never repeated per click.
+      if (seed.surprise && seed.watchlist) weight += SURPRISE_BONUS * saveDecay(seed.watchlistAt, now);
       if (weight > 0) {
         reason = {
           movieId: seed.movieId,
@@ -147,6 +187,14 @@ export async function getRecommendations(profileInput, fetchRecs, limit = 20, no
       ...scoredSeeds.filter((seed) => seed.weight < 0).slice(0, MAX_PROFILE_NEGATIVE_SEEDS),
     ];
 
+  // Give a newly discovered interest a chance even when six favorites fill the seed budget.
+  const surpriseSeed = scoredSeeds.filter((seed) => seed.surprise && seed.weight > 0)
+    .sort((a, b) => (b.watchlistAt ?? 0) - (a.watchlistAt ?? 0))[0];
+  if (!isLegacyInput && surpriseSeed && !seeds.includes(surpriseSeed)) {
+    const lastPositive = seeds.findLastIndex((seed) => seed.weight > 0);
+    seeds[lastPositive] = surpriseSeed;
+  }
+
   const excludedIds = getExcludedMovieIds(listsByName);
 
   const recommendations = await Promise.all(seeds.map(async (seed) => {
@@ -166,23 +214,24 @@ export async function getRecommendations(profileInput, fetchRecs, limit = 20, no
       if (movie.id == null || excludedIds.has(key) || seenForSeed.has(key)) continue;
       seenForSeed.add(key);
 
-      const entry = scores.get(key) ?? { movie, score: 0, count: 0, because: new Set(), reasons: [] };
+      const entry = scores.get(key) ?? { movie, score: 0, count: 0, positiveMatches: 0, negativeMatches: 0, because: new Set(), reasons: [] };
       entry.score += seed.weight;
       entry.count += 1;
       if (seed.weight > 0) {
+        entry.positiveMatches += 1;
         seed.because.forEach((reason) => entry.because.add(reason));
         entry.reasons.push(seed.reason);
+      } else {
+        entry.negativeMatches += 1;
       }
       scores.set(key, entry);
     }
   });
 
-  return [...scores.values()]
+  const ranked = [...scores.values()]
     .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score
-      || (b.movie.vote_average ?? 0) - (a.movie.vote_average ?? 0)
-      || (b.movie.vote_count ?? 0) - (a.movie.vote_count ?? 0))
-    .slice(0, limit)
+    .sort((a, b) => (a.score <= 1 && b.score <= 1 ? 0 : b.score - a.score) || byQuality(a, b));
+  return (explorationMovies != null ? mixExploration(ranked, scores, explorationMovies, profile, limit) : ranked.slice(0, limit))
     .map((entry) => ({
       ...entry,
       because: [...entry.because],

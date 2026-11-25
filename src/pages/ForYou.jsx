@@ -28,10 +28,15 @@ export async function loadRecommendations(user) {
     if (favoriteIds.has(id)) lists.push('Favorites');
     return { ...entry, listNote: lists.length ? `Also in your ${lists.join(' and ')} ${lists.length > 1 ? 'lists' : 'list'}` : null };
   };
-  const recs = await getRecommendations(profile, getMovieRecommendations);
+  let trendingError;
+  const trending = await getTrending().catch((error) => {
+    trendingError = error;
+    return [];
+  });
+  const recs = await getRecommendations(profile, getMovieRecommendations, 20, Date.now(), trending);
   if (recs.length) return { recs: recs.map(addListNote), fallback: false };
   // Fall back to trending when there are no positive matches.
-  const trending = await getTrending();
+  if (trendingError) throw trendingError;
   const excludedIds = getExcludedMovieIds(profile);
   return {
     recs: trending
@@ -61,12 +66,13 @@ export default function ForYou() {
       )}
       {state.data && (
         <div className="grid">
-          {state.data.recs.map(({ movie, reasons, listNote }) => (
+          {state.data.recs.map(({ movie, reasons, listNote, exploration }) => (
             <MovieCard
               key={movie.id}
               movie={movie}
-              note={state.data.fallback ? 'Trending this week' : formatRecommendationReason(reasons)}
+              note={state.data.fallback ? 'Trending this week' : exploration ? 'Discover something different' : formatRecommendationReason(reasons)}
               listNote={listNote}
+              recommendation={exploration && user ? { exploration: true, movieId: movie.id, userId: user.uid } : undefined}
             />
           ))}
         </div>

@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { getMovie, posterUrl } from '../lib/tmdb';
 import { useAsync } from '../lib/useAsync';
 import MovieActions from '../components/MovieActions';
@@ -8,6 +8,7 @@ import Status from '../components/Status';
 
 export default function MovieDetail() {
   const { id } = useParams();
+  const { state: navigationState } = useLocation();
   const state = useAsync(() => getMovie(id), [id]);
   if (!state.data) return <Status state={state} />;
 
@@ -30,7 +31,7 @@ export default function MovieDetail() {
           <p className="muted">{movie.genres.map((g) => g.name).join(' / ')}</p>
           {director && <p>Director: {director.name}</p>}
           <p>{movie.overview || 'No overview available.'}</p>
-          <MovieActions movie={movie} />
+          <MovieActions movie={movie} recommendation={navigationState?.recommendation} />
         </div>
       </div>
 

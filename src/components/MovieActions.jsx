@@ -12,7 +12,7 @@ const ACTIONS = [
 
 const emptyLists = { favorites: false, watched: false, watchlist: false };
 
-export default function MovieActions({ movie }) {
+export default function MovieActions({ movie, recommendation }) {
   const { user } = useAuth();
   const [lists, setLists] = useState(emptyLists);
   const [loading, setLoading] = useState(false);
@@ -55,7 +55,7 @@ export default function MovieActions({ movie }) {
     setError('');
     try {
       if (lists[list]) await removeMovieFromList(user.uid, list, movie.id);
-      else await addMovieToList(user.uid, list, movie);
+      else await addMovieToList(user.uid, list, movie, recommendation);
       setLists((current) => ({ ...current, [list]: !current[list] }));
     } catch (actionError) {
       setError(actionError.message);
